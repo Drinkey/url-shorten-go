@@ -5,7 +5,7 @@ import (
     "log"
     "fmt"
     "io"
-    "urlshorten/db"
+    "github.com/Drinkey/url-shorten-go/db"
 )
 
 func errorHandler(w http.ResponseWriter) {

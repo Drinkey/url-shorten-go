@@ -5,8 +5,8 @@ import (
     "encoding/json"
     "net/http"
     "io/ioutil"
-    "urlshorten/db"
-    "urlshorten/utils"
+    "github.com/Drinkey/url-shorten-go/db"
+    "github.com/Drinkey/url-shorten-go/utils"
 )
 
 func JsonResponse(w http.ResponseWriter, code int, message interface{}) {

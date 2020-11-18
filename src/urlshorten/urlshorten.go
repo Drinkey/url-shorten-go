@@ -4,7 +4,7 @@ import (
     "log"
     "net/http"
     _ "github.com/mattn/go-sqlite3"
-    "urlshorten/api"
+    "github.com/Drinkey/url-shorten-go/api"
 )
 
 func main() {

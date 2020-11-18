@@ -7,7 +7,7 @@ import (
     "os"
     _ "github.com/mattn/go-sqlite3"
     "github.com/catinello/base62"
-    "urlshorten/utils"
+    "github.com/Drinkey/url-shorten-go/utils"
 )
 
 const DB_SCHEMA = `
@@ -21,42 +21,52 @@ CREATE TABLE urls (
 
 var DBPATH string = os.Getenv("URL_DB_PATH")
 
+var conn *sql.DB
+
 func init() {
+    log.Println("db: initializing database")
+
     if DBPATH == "" {
         log.Panic("Specify the DB Path in environment variable URL_DB_PATH")
     }
+
+    initDbRequired := true
+
     if utils.FileExist(DBPATH) {
-        return
+        log.Println("db: database file already exist")
+        initDbRequired = false
     }
 
-    conn, err := sql.Open("sqlite3", DBPATH)
+    connDB, err := sql.Open("sqlite3", DBPATH)
     if err != nil {
-        log.Fatal(err)
+        log.Panic(err)
     }
-    defer conn.Close()
+    conn = connDB
+
+    if err = conn.Ping(); err != nil {
+        log.Fatal("db: database unreachable:", err)
+    }
+
+    if initDbRequired {
+        log.Println("db: first install, initializing database schema")
+        _, err = conn.Exec(DB_SCHEMA)
+        if err != nil {
+            log.Fatalf("db: %q: %s\n", err, DB_SCHEMA)
+        }
+        log.Printf("db: Database %s created", DBPATH)
     
-    _, err = conn.Exec(DB_SCHEMA)
-    if err != nil {
-        log.Fatalf("db: %q: %s\n", err, DB_SCHEMA)
+        _, err = conn.Exec(`insert into urls(
+                id, short_url, origin_url, origin_url_sha
+            ) values (
+                1, "abc", "test", "123123123123123123")`)
+        if err != nil {
+            log.Panic(err)
+        }
     }
-    log.Printf("db: Database %s created", DBPATH)
-
-    _, err = conn.Exec(`insert into urls(
-            id, short_url, origin_url, origin_url_sha
-        ) values (
-            1, "abc", "test", "123123123123123123")`)
-    if err != nil {
-        log.Fatal(err)
-    }
+    
 }
 
 func generateIndex() int {
-    conn, err := sql.Open("sqlite3", DBPATH)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer conn.Close()
-
     rows, err := conn.Query("select id from urls order by id desc limit 1")
     if err != nil {
         log.Fatal(err)
@@ -74,11 +84,6 @@ func generateIndex() int {
 }
 
 func GetAll(urlSha string) []utils.UrlRecord {
-    conn, err := sql.Open("sqlite3", DBPATH)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer conn.Close()
     var sql string
     if urlSha != "" {
         sql = "select * from urls where origin_url_sha='" + urlSha +"'"
@@ -88,7 +93,7 @@ func GetAll(urlSha string) []utils.UrlRecord {
 
     rows, err := conn.Query(sql)
     if err != nil {
-        log.Fatal(err)
+        log.Panic(err)
     }
     var results []utils.UrlRecord
     for rows.Next() {
@@ -107,12 +112,6 @@ func GetAll(urlSha string) []utils.UrlRecord {
 // If OriginSha specified, query by sha
 // If ShortUrl specified, query by short URL
 func Get(url utils.UrlRecordQuery) utils.UrlRecord {
-    conn, err := sql.Open("sqlite3", DBPATH)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer conn.Close()
-
     var sql string
     if url.ShortUrl != "" {
         sql = "select * from urls where short_url='" + url.ShortUrl +"' order by id desc limit 1"
@@ -145,14 +144,8 @@ func Create(url utils.UrlRecord) (utils.UrlRecord, bool) {
     sqlStmt := fmt.Sprintf("insert into urls values (%s)", values)
     log.Println(sqlStmt)
 
-    conn, err := sql.Open("sqlite3", DBPATH)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer conn.Close()
-
     log.Println("db: creating new record")
-    _, err = conn.Exec(sqlStmt)
+    _, err := conn.Exec(sqlStmt)
     if err != nil {
         log.Fatal(err)
         return utils.UrlRecord{}, false

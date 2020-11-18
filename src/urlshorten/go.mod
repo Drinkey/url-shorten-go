@@ -1,4 +1,4 @@
-module urlshorten
+module github.com/Drinkey/url-shorten-go
 
 go 1.14
 
