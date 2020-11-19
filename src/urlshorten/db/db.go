@@ -24,7 +24,8 @@ var DBPATH string = os.Getenv("URL_DB_PATH")
 var conn *sql.DB
 
 func init() {
-    log.Println("db: initializing database")
+    log.SetPrefix("db - init():")
+    log.Println("initializing database")
 
     if DBPATH == "" {
         log.Panic("Specify the DB Path in environment variable URL_DB_PATH")
@@ -33,7 +34,7 @@ func init() {
     initDbRequired := true
 
     if utils.FileExist(DBPATH) {
-        log.Println("db: database file already exist")
+        log.Println("database file already exist")
         initDbRequired = false
     }
 
@@ -44,16 +45,16 @@ func init() {
     conn = connDB
 
     if err = conn.Ping(); err != nil {
-        log.Fatal("db: database unreachable:", err)
+        log.Fatal("database unreachable:", err)
     }
 
     if initDbRequired {
-        log.Println("db: first install, initializing database schema")
+        log.Println("first install, initializing database schema")
         _, err = conn.Exec(DB_SCHEMA)
         if err != nil {
-            log.Fatalf("db: %q: %s\n", err, DB_SCHEMA)
+            log.Fatalf("db %q: %s\n", err, DB_SCHEMA)
         }
-        log.Printf("db: Database %s created", DBPATH)
+        log.Printf("Database %s created", DBPATH)
     
         _, err = conn.Exec(`insert into urls(
                 id, short_url, origin_url, origin_url_sha
@@ -67,6 +68,7 @@ func init() {
 }
 
 func generateIndex() int {
+    log.SetPrefix("db - generateIndex():")
     rows, err := conn.Query("select id from urls order by id desc limit 1")
     if err != nil {
         log.Fatal(err)
@@ -77,13 +79,14 @@ func generateIndex() int {
         if err != nil {
             log.Fatal(err)
         }
-        log.Printf("DB: Got latest id %d", index)
+        log.Printf("Got latest id %d", index)
     }
 
     return index
 }
 
 func GetAll(urlSha string) []utils.UrlRecord {
+    log.SetPrefix("db - GetAll():")
     var sql string
     if urlSha != "" {
         sql = "select * from urls where origin_url_sha='" + urlSha +"'"
@@ -112,6 +115,7 @@ func GetAll(urlSha string) []utils.UrlRecord {
 // If OriginSha specified, query by sha
 // If ShortUrl specified, query by short URL
 func Get(url utils.UrlRecordQuery) utils.UrlRecord {
+    log.SetPrefix("db - Get():")
     var sql string
     if url.ShortUrl != "" {
         sql = "select * from urls where short_url='" + url.ShortUrl +"' order by id desc limit 1"
@@ -136,6 +140,7 @@ func Get(url utils.UrlRecordQuery) utils.UrlRecord {
 }
 
 func Create(url utils.UrlRecord) (utils.UrlRecord, bool) {
+    log.SetPrefix("db - Create():")
     index := generateIndex()
     base62 := base62.Encode(index)
     sha := utils.Sha256Sum(url.OriginUrl)
@@ -144,7 +149,7 @@ func Create(url utils.UrlRecord) (utils.UrlRecord, bool) {
     sqlStmt := fmt.Sprintf("insert into urls values (%s)", values)
     log.Println(sqlStmt)
 
-    log.Println("db: creating new record")
+    log.Println("creating new record")
     _, err := conn.Exec(sqlStmt)
     if err != nil {
         log.Fatal(err)
@@ -155,9 +160,10 @@ func Create(url utils.UrlRecord) (utils.UrlRecord, bool) {
 }
 
 func GetOriginUrl(shortUrl string) string {
+    log.SetPrefix("db - GetOriginUrl():")
     r := Get(utils.UrlRecordQuery{ShortUrl: shortUrl})
     if r.OriginUrl == "" {
-        log.Println("db: record not already exist")
+        log.Println("record not already exist")
         return ""
     }
     return r.OriginUrl

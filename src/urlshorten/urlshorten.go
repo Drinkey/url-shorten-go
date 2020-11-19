@@ -8,8 +8,9 @@ import (
 )
 
 func main() {
+    log.SetPrefix("main: ")
     log.Println("Starting HttpService")
     http.HandleFunc("/", api.RedirectHandler)
     http.HandleFunc("/urls", api.UrlsManagementHandler)
-    log.Fatal(http.ListenAndServe(":80", nil))
+    go log.Fatal(http.ListenAndServe(":80", nil))
 }

@@ -22,10 +22,12 @@ func error(msg string) map[string]string {
 }
 
 func getAllUrlRecords(w http.ResponseWriter, req *http.Request) {
+    log.SetPrefix("api - api.getAllUrlRecords():")
     JsonResponse(w, http.StatusOK, db.GetAll(""))
 }
 
 func createUrlRecords(w http.ResponseWriter, req *http.Request) {
+    log.SetPrefix("api - api.RedirectHandler():")
     if req.Header.Get("content-type") != "application/json" {
         JsonResponse(w, http.StatusBadRequest, 
             error("only JSON format in request body accepted"))
